@@ -5,6 +5,8 @@ import textwrap
 
 import pytest
 from _pytest import monkeypatch
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 from flask import Flask
 from flask.globals import request_ctx
@@ -196,3 +198,24 @@ def purge_module(request):
         request.addfinalizer(lambda: sys.modules.pop(name, None))
 
     return inner
+
+
+@pytest.fixture
+def random_port():
+    import random
+
+    ports = range(7000, 12000)
+    return random.choice(ports)
+
+
+@pytest.fixture
+def browser():
+    chrome_options = Options()
+    chrome_options.add_argument("--disable-extensions")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--headless")
+
+    driver = webdriver.Chrome(options=chrome_options)
+
+    yield driver
+    driver.quit()
