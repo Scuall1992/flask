@@ -3,12 +3,12 @@ import time
 from multiprocessing import Process
 
 import requests
-from sherpa import multiprocessing
 
+# from sherpa import multiprocessing
 
-# чтобы запускать фласк в отдельном процессе
-# pip install parameter-sherpa
-multiprocessing.set_start_method("fork")
+# # чтобы запускать фласк в отдельном процессе
+# # pip install parameter-sherpa
+# multiprocessing.set_start_method("fork")
 
 
 def test_auth(random_port):

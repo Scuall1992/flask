@@ -160,3 +160,92 @@ def test_render_template(browser, random_port):
     )
 
     assert file_data == code.replace("\n", "").replace(" ", "")
+
+
+def test_db(random_port):
+    def target():
+        from flask import Flask, request
+        from flask_sqlalchemy import SQLAlchemy
+
+        app = Flask(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+        with app.app_context():
+            db = SQLAlchemy(app)
+
+            class MyModel(db.Model):
+                id = db.Column(db.Integer, primary_key=True)
+                name = db.Column(db.String(100), nullable=False)
+
+                def __repr__(self):
+                    return f"<Student {self.name}>"
+
+            db.create_all()
+
+        @app.route("/is_alive")
+        def alive():
+            return "Hello"
+
+        @app.route("/create_user")
+        def create_user():
+            name = request.args.get("name")
+
+            db.session.add(MyModel(name=name))
+            db.session.commit()
+
+            return "User created", 200
+
+        @app.route("/read_user")
+        def read_user():
+            name = request.args.get("name")
+            user = MyModel.query.filter_by(name=name).all()
+
+            return str(user), 200
+
+        @app.route("/read_all")
+        def read_all():
+            user = MyModel.query.all()
+
+            return str(user), 200
+
+        app.run(port=random_port)
+
+    p = Process(target=target, daemon=True)
+
+    p.start()
+
+    host = f"http://localhost:{random_port}"
+
+    while True:
+        try:
+            response = requests.get(f"{host}/is_alive")
+            if response.status_code == 200:
+                break
+        except Exception:
+            print("Server is not responding")
+        time.sleep(0.1)
+
+    base_url = f"{host}/create_user?name=name"
+
+    resp = requests.get(base_url)
+    assert resp.status_code == 200
+    assert resp.content == b"User created"
+
+    base_url = f"{host}/create_user?name=name1"
+
+    resp = requests.get(base_url)
+    assert resp.status_code == 200
+    assert resp.content == b"User created"
+
+    base_url = f"{host}/read_user?name=name"
+
+    resp = requests.get(base_url)
+    assert resp.status_code == 200
+    assert resp.content == b"[<Student name>]"
+
+    base_url = f"{host}/read_all"
+
+    resp = requests.get(base_url)
+    assert resp.status_code == 200
+    assert resp.content == b"[<Student name>, <Student name1>]"
