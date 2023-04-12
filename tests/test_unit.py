@@ -122,3 +122,56 @@ def test_render_template_string(app, client):
 
     rv = client.get("/d")
     assert rv.data == b"{1: 2}"
+
+
+@pytest.mark.parametrize(
+    (
+        "test_value",
+        "expected_value",
+    ),
+    [
+        (0, b"0\n"),
+        (-1, b"-1\n"),
+        (1, b"1\n"),
+        (23, b"23\n"),
+        (3.14, b"3.14\n"),
+        ("s", b'"s"\n'),
+        ("longer string", b'"longer string"\n'),
+        (True, b"true\n"),
+        (False, b"false\n"),
+        (None, b"null\n"),
+    ],
+)
+def test_jsonify(test_value, expected_value, app, client):
+    url = "/jsonify"
+    app.add_url_rule(url, url, lambda x=test_value: flask.jsonify(x))
+    rv = client.get(url)
+    assert rv.mimetype == "application/json"
+    assert rv.data == expected_value
+
+
+@pytest.mark.parametrize(
+    (
+        "test_value",
+        "expected_value",
+    ),
+    [
+        ({"a": 0}, b'{"a":0}\n'),
+        ({"b": 23}, b'{"b":23}\n'),
+        ({"c": 3.14}, b'{"c":3.14}\n'),
+        ({"d": "d"}, b'{"d":"d"}\n'),
+        ({"e": "hello"}, b'{"e":"hello"}\n'),
+        ({"f": True}, b'{"f":true}\n'),
+        ({"g": False}, b'{"g":false}\n'),
+        ({"h": ["blabla", 102, True]}, b'{"h":["blabla",102,true]}\n'),
+        ({"i": {"test": "dict"}}, b'{"i":{"test":"dict"}}\n'),
+        ({"j": -230}, b'{"j":-230}\n'),
+        ({"k": None}, b'{"k":null}\n'),
+    ],
+)
+def test_jsonify_dictionaries(test_value, expected_value, app, client):
+    url = "/jsonify"
+    app.add_url_rule(url, url, lambda x=test_value: flask.jsonify(x))
+    rv = client.get(url)
+    assert rv.mimetype == "application/json"
+    assert rv.data == expected_value
