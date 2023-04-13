@@ -1,7 +1,11 @@
+import json
+import os
+
 import pytest
 import werkzeug
 
 import flask
+from flask.helpers import get_debug_flag
 
 
 def test_url_for(app, req_ctx):
@@ -175,3 +179,53 @@ def test_jsonify_dictionaries(test_value, expected_value, app, client):
     rv = client.get(url)
     assert rv.mimetype == "application/json"
     assert rv.data == expected_value
+
+
+class Config:
+    """Base config, uses staging database server."""
+
+    TESTING = False
+    DB_SERVER = "192.168.1.56"
+    TEST_CONFIG_DATA = 0
+
+
+def test_env_config(app):
+    app.config.from_object("test_unit.Config")
+
+    assert app.config["TESTING"] == Config.TESTING
+    assert app.config["DB_SERVER"] == Config.DB_SERVER
+    assert app.config["TEST_CONFIG_DATA"] == Config.TEST_CONFIG_DATA
+
+
+@pytest.mark.parametrize(
+    ("debug", "expect"),
+    [
+        ("", False),
+        ("0", False),
+        ("False", False),
+        ("No", False),
+        ("True", True),
+    ],
+)
+def test_get_debug_flag(monkeypatch, debug, expect):
+    monkeypatch.setenv("FLASK_DEBUG", debug)
+    assert get_debug_flag() == expect
+
+
+def test_config_from_file_json():
+    app = flask.Flask(__name__)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    with open(os.path.join(current_dir, "config.json"), "w") as f:
+        f.write(
+            """{
+    "TEST_KEY": "foo",
+    "SECRET_KEY": "config"
+}
+"""
+        )
+
+    app.config.from_file(os.path.join(current_dir, "config.json"), json.load)
+
+    assert app.config["TEST_KEY"] == "foo"
+    assert app.config["SECRET_KEY"] == "config"
