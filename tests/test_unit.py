@@ -229,3 +229,62 @@ def test_config_from_file_json():
 
     assert app.config["TEST_KEY"] == "foo"
     assert app.config["SECRET_KEY"] == "config"
+
+
+@pytest.mark.parametrize(
+    ("methods", "request_method", "expected"),
+    [
+        ([], "GET", 405),
+        ([], "POST", 405),
+        ([], "DELETE", 405),
+        ([], "PATCH", 405),
+        ([], "PUT", 405),
+        (["GET"], "GET", 200),
+        (["GET"], "POST", 405),
+        (["GET"], "DELETE", 405),
+        (["GET"], "PATCH", 405),
+        (["GET"], "PUT", 405),
+        (["GET", "POST", "DELETE", "PATCH", "PUT"], "GET", 200),
+        (["GET", "POST", "DELETE", "PATCH", "PUT"], "POST", 200),
+        (["GET", "POST", "DELETE", "PATCH", "PUT"], "DELETE", 200),
+        (["GET", "POST", "DELETE", "PATCH", "PUT"], "PATCH", 200),
+        (["GET", "POST", "DELETE", "PATCH", "PUT"], "PUT", 200),
+    ],
+)
+def test_http_methods(app, client, methods, request_method, expected):
+    @app.route("/", methods=methods)
+    def index():
+        return ""
+
+    match request_method:
+        case "GET":
+            assert client.get("/").status_code == expected
+        case "POST":
+            assert client.post("/").status_code == expected
+        case "DELETE":
+            assert client.delete("/").status_code == expected
+        case "PATCH":
+            assert client.patch("/").status_code == expected
+        case "PUT":
+            assert client.put("/").status_code == expected
+
+
+def test_session(app, client):
+    app.config.update(SERVER_NAME="example.com")
+
+    @app.route("/")
+    def index():
+        flask.session["testing"] = "42"
+        return "Hello World"
+
+    @app.route("/session")
+    def session():
+        return flask.session["testing"]
+
+    rv = client.get("/", "http://example.com/")
+    assert rv.status_code == 200
+    assert "domain=.example.com" in rv.headers["set-cookie"].lower()
+    assert "httponly" in rv.headers["set-cookie"].lower()
+
+    rv = client.get("/session", "http://example.com/")
+    assert rv.data == b"42"
