@@ -256,17 +256,16 @@ def test_http_methods(app, client, methods, request_method, expected):
     def index():
         return ""
 
-    match request_method:
-        case "GET":
-            assert client.get("/").status_code == expected
-        case "POST":
-            assert client.post("/").status_code == expected
-        case "DELETE":
-            assert client.delete("/").status_code == expected
-        case "PATCH":
-            assert client.patch("/").status_code == expected
-        case "PUT":
-            assert client.put("/").status_code == expected
+    if request_method == "GET":
+        assert client.get("/").status_code == expected
+    elif request_method == "POST":
+        assert client.post("/").status_code == expected
+    elif request_method == "DELETE":
+        assert client.delete("/").status_code == expected
+    elif request_method == "PATCH":
+        assert client.patch("/").status_code == expected
+    elif request_method == "PUT":
+        assert client.put("/").status_code == expected
 
 
 def test_session(app, client):
